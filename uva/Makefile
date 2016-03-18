@@ -1,7 +1,7 @@
 CC = clang++
 CFLAGS = -std=c++11 -stdlib=libc++ -Wall -Wextra -g
 
-SRCS = p10043.cc
+SRCS = p10043.cc p10034.cc
 
 EXES = $(SRCS:.cc=)
 
