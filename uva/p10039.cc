@@ -9,6 +9,7 @@ using namespace std;
 using namespace boost;
 
 #define NON_REACHABLE 2401
+#define NON_DEPARTABLE -1
 
 struct Edge {
   int departure_time;
@@ -16,13 +17,61 @@ struct Edge {
   int stop;
 };
 
-// NOTE:
-//   - things to learn
-//     - lambda expression
-//     - algorithm library
-//     - boost optional
+// backward variant of `Solve`
+int BackwardSolve(vector< vector<Edge> > graph,
+                  int end_time,
+                  int first_stop,
+                  int last_stop) {
 
-optional< pair<int, int> > Solve(vector< vector<Edge> > graph,
+  vector<int> departable_times = vector<int>(graph.size(), NON_DEPARTABLE);
+  vector<int> non_picked_verteces = vector<int>(graph.size());
+
+  for (auto it = non_picked_verteces.begin();
+       it != non_picked_verteces.end();
+       it++) {
+    *it = distance(non_picked_verteces.begin(), it);
+  }
+
+  // 1. loop
+
+  // (a)
+  vector<int>::iterator pick_it = find(non_picked_verteces.begin(),
+                                       non_picked_verteces.end(),
+                                       last_stop);
+  departable_times[*pick_it] = end_time;
+
+  while (true) {
+    // (b)
+    for (vector<Edge>::iterator it = graph[*pick_it].begin();
+         it != graph[*pick_it].end();
+         it++) {
+      if (
+          departable_times[*pick_it] >= (*it).arrival_time &&
+          (*it).departure_time >= departable_times[(*it).stop]
+          ) {
+        departable_times[(*it).stop] = (*it).departure_time;
+      }
+    }
+
+    // (c)
+    non_picked_verteces.erase(pick_it);
+
+    // (d)
+    if (non_picked_verteces.empty()) { break; }
+    pick_it =
+      max_element(non_picked_verteces.begin(),
+                  non_picked_verteces.end(),
+                  [departable_times](int i, int j) {
+                    return (departable_times[i] < departable_times[j]);
+                  });
+    if (departable_times[*pick_it] == NON_DEPARTABLE) { break; }
+  }
+
+  // 2
+  return departable_times[first_stop];
+}
+
+optional<int> Solve(vector< vector<Edge> > graph,
                                  int start_time,
                                  int first_stop,
                                  int last_stop) {
@@ -35,7 +84,7 @@ optional< pair<int, int> > Solve(vector< vector<Edge> > graph,
   //                          with  `v \in non_picked_verteces`
   // 2. if `non_picked_verteces` includes `last_stop`
   //    then return None
-  //    else run backword to find laziest departure time
+  //    else run `BackwordSolve` to find laziest departure time (with almost same algorithm)
 
   vector<int> reachable_times = vector<int>(graph.size(), NON_REACHABLE);
   vector<int> non_picked_verteces = vector<int>(graph.size());
@@ -84,11 +133,9 @@ optional< pair<int, int> > Solve(vector< vector<Edge> > graph,
   // 2
   if (find(non_picked_verteces.begin(), non_picked_verteces.end(), last_stop)
       != non_picked_verteces.end()) {
-    return optional< pair<int, int> >();
+    return optional<int>();
   } else {
-    // TODO: go backward to find laziest departure time
-    int arrival_time = reachable_times[last_stop];
-    return optional< pair<int, int> >(make_pair(0, arrival_time));
+    return optional<int>(reachable_times[last_stop]);
   }
 }
 
@@ -111,6 +158,7 @@ int main() {
 
     // read train description
     vector< vector<Edge> > graph(num_cities, vector<Edge>());
+    vector< vector<Edge> > backward_graph(num_cities, vector<Edge>());
     int num_train_descs;
     cin >> num_train_descs; // ..1000
     for (int i = 0; i < num_train_descs; i++) {
@@ -124,10 +172,13 @@ int main() {
         string next_stop;
         cin >> arrival_time >> next_stop;
         Edge edge;
-        edge.departure_time = departure_time;
+        Edge backward_edge;
+        edge.departure_time = backward_edge.departure_time = departure_time;
+        edge.arrival_time = backward_edge.arrival_time = arrival_time;
         edge.stop = cities[next_stop];
-        edge.arrival_time = arrival_time;
+        backward_edge.stop = cities[stop];
         graph[cities[stop]].push_back(edge);
+        backward_graph[cities[next_stop]].push_back(backward_edge);
         stop = next_stop;
         departure_time = arrival_time;
       }
@@ -137,13 +188,20 @@ int main() {
     string first_stop;
     string last_stop;
     cin >> start_time >> first_stop >> last_stop;
-    optional< pair<int, int> > answer = Solve(graph, start_time,
-                                              cities[first_stop], cities[last_stop]);
-    cout << "Scenario " << i_case << "\n";
-    if (answer) {
-      cout << "Departure " << setfill('0') << setw(4) << (*answer).first
+
+    optional<int> o_arrival_time = Solve(graph, start_time,
+                                       cities[first_stop], cities[last_stop]);
+    int departure_time;
+    if (o_arrival_time) {
+      departure_time = BackwardSolve(backward_graph, *o_arrival_time,
+                                     cities[first_stop], cities[last_stop]);
+    }
+
+    cout << "Scenario " << i_case + 1 << "\n";
+    if (o_arrival_time) {
+      cout << "Departure " << setfill('0') << setw(4) << departure_time
            << " " << first_stop << "\n";
-      cout << "Arrival   " << setfill('0') << setw(4) << (*answer).second
+      cout << "Arrival   " << setfill('0') << setw(4) << *o_arrival_time
            << " " << last_stop << "\n";
     } else {
       cout << "No connection" << "\n";
