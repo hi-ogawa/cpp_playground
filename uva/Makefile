@@ -1,5 +1,5 @@
 CC = clang++
-CFLAGS = -std=c++11 -stdlib=libc++ -Wall -Wextra -g
+CFLAGS = -I $(BOOST_PATH) -std=c++11 -stdlib=libc++ -Wall -Wextra -g
 
 SRCS = p10043.cc p10034.cc
 
