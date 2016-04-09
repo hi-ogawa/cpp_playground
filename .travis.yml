@@ -1,0 +1,28 @@
+language: cpp
+compiler: clang
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - libstdc++-4.8-dev
+
+env:
+  - BOOST_PATH=$TRAVIS_BUILD_DIR/vendor/boost_1_60_0
+
+before_script:
+  - mkdir -p ./vendor
+  - >
+    (cd ./vendor &&
+    test -f boost_1_60_0/boost/optional.hpp) ||
+    (wget -O boost_1_60_0.tar.gz https://sourceforge.net/projects/boost/files/boost/1.60.0/boost_1_60_0.tar.gz/download &&
+    tar xzf boost_1_60_0.tar.gz)
+
+cache:
+  directories:
+    - ./vendor/boost_1_60_0
+
+script:
+  - ls -la ./
+  - cd ./uva && make -f Makefile.travis test
