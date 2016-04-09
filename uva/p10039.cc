@@ -8,7 +8,7 @@
 using namespace std;
 using namespace boost;
 
-#define NON_REACHABLE 100000
+#define NON_REACHABLE 2401
 
 struct Edge {
   int departure_time;
@@ -27,18 +27,15 @@ optional< pair<int, int> > Solve(vector< vector<Edge> > graph,
                                  int first_stop,
                                  int last_stop) {
 
-  // TODO:
-  //   - 1. and 2. can be squashed if we use `do while` ?
-
-  // 1. initialize two arrays with `first_stop`
-  // 2. loop until step (a) finds anything
-  //   - (a) find `v` s.t. minimize `reachable_times[v]`
+  // 1. loop until step (d) finds nothing
+  //   - (a) start with `first_stop` vertex
+  //   - (b) update `reachable_time` with intermidiate vertex `pick_it`
+  //   - (c) remove `pick_it` from `non_picked_verteces`
+  //   - (d) find `v` s.t. minimize `reachable_times[v]`
   //                          with  `v \in non_picked_verteces`
-  //   - (b) update `reachable_times` with intermidiating `v` station
-  //   - (c) remove v from non_picked_verteces
-  // 3. if `last_stop \nin non_picked_verteces`
-  //    then run backword to find laziest departure time
-  //    else return None
+  // 2. if `non_picked_verteces` includes `last_stop`
+  //    then return None
+  //    else run backword to find laziest departure time
 
   vector<int> reachable_times = vector<int>(graph.size(), NON_REACHABLE);
   vector<int> non_picked_verteces = vector<int>(graph.size());
@@ -49,32 +46,15 @@ optional< pair<int, int> > Solve(vector< vector<Edge> > graph,
     *it = distance(non_picked_verteces.begin(), it);
   }
 
-  // 1
-  vector<int>::iterator pick_it =
-    find(non_picked_verteces.begin(), non_picked_verteces.end(), first_stop);
+  // 1. loop
+
+  // (a) choose first vertex
+  vector<int>::iterator pick_it = find(non_picked_verteces.begin(),
+                                       non_picked_verteces.end(),
+                                       first_stop);
   reachable_times[*pick_it] = start_time;
-  for (vector<Edge>::iterator it = graph[*pick_it].begin();
-       it !=  graph[*pick_it].end();
-       it++) {
-    if (
-        reachable_times[*pick_it] <= (*it).departure_time &&
-        (*it).arrival_time <= reachable_times[(*it).stop]
-        ) {
-      reachable_times[(*it).stop] = (*it).arrival_time;
-    }
-  }
-  non_picked_verteces.erase(pick_it);
 
-  // 2
-  while (!non_picked_verteces.empty()) {
-    // (a)
-    vector<int>::iterator pick_it =
-      min_element(non_picked_verteces.begin(), non_picked_verteces.end(),
-                  [reachable_times](int i, int j) {
-                    return (reachable_times[i] < reachable_times[j]);
-                  });
-    if (reachable_times[*pick_it] == NON_REACHABLE) { break; }
-
+  while (true) {
     // (b)
     for (vector<Edge>::iterator it = graph[*pick_it].begin();
          it != graph[*pick_it].end();
@@ -89,16 +69,26 @@ optional< pair<int, int> > Solve(vector< vector<Edge> > graph,
 
     // (c)
     non_picked_verteces.erase(pick_it);
+
+    // (d)
+    if (non_picked_verteces.empty()) { break; }
+    pick_it =
+      min_element(non_picked_verteces.begin(),
+                  non_picked_verteces.end(),
+                  [reachable_times](int i, int j) {
+                    return (reachable_times[i] < reachable_times[j]);
+                  });
+    if (reachable_times[*pick_it] == NON_REACHABLE) { break; }
   }
 
-  // 3
+  // 2
   if (find(non_picked_verteces.begin(), non_picked_verteces.end(), last_stop)
-      == non_picked_verteces.end()) {
+      != non_picked_verteces.end()) {
+    return optional< pair<int, int> >();
+  } else {
     // TODO: go backward to find laziest departure time
     int arrival_time = reachable_times[last_stop];
     return optional< pair<int, int> >(make_pair(0, arrival_time));
-  } else {
-    return optional< pair<int, int> >();
   }
 }
 
