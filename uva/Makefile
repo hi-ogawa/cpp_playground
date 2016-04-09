@@ -12,3 +12,9 @@ all: $(EXES)
 
 clean:
 	rm $(EXES)
+
+test: SHELL:=/bin/bash
+test: all
+	diff <(./p10034 < resources/p10034.input) <(cat resources/p10034.output)
+	diff <(./p10039 < resources/p10039.hard.input) <(cat resources/p10039.hard.output)
+	diff <(./p10043 < resources/p10043.input) <(cat resources/p10043.output)
